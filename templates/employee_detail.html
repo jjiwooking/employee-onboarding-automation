@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{{ employee.name }} 온보딩</h1><p>{{ employee.department }} · {{ employee.job_title or '직위/직책 미등록' }} · 입사일 {{ employee.start_date }} · {{ employee.template_name or '템플릿 미적용' }}</p></div>
+  <div class="header-actions">
+    {% if permission.can_view_all %}<a class="btn" href="/employees/{{ employee.id }}/preview-newhire">신입사원 화면 미리보기</a>{% endif %}
+    <div class="big-progress"><strong>{{ progress }}%</strong><span>완료</span></div>
+  </div>
+</div>
+{% if sync_message %}<div class="alert success">템플릿 최신화 완료: {{ sync_message }}</div>{% endif %}
+{% if error %}<div class="alert error">{{ error }}</div>{% endif %}
+{% if current_role=='신입사원' %}<div class="alert info">현재 <b>{{ employee.name }}</b> 입사자의 신입사원 화면을 보고 있습니다. 실제 운영 시에는 사내 로그인/SSO와 연결해야 합니다.</div>{% endif %}
+
+<div class="detail-grid">
+<section class="panel">
+  <div class="panel-title"><h2>온보딩 업무</h2><span class="badge">자동 생성 + 개별 추가</span></div>
+  <table><thead><tr><th>완료</th><th>업무명</th><th>담당부서</th><th>담당자</th><th>완료기한</th><th>구분</th><th>상태</th>{% if permission.can_edit_employee %}<th></th>{% endif %}</tr></thead>
+  <tbody>{% for task in tasks %}<tr class="{% if task.status=='취소' %}muted-row{% endif %}">
+    <td>{% if permission.can_edit_employee and task.status!='취소' %}<form method="post" action="/tasks/{{ task.id }}/toggle"><input type="hidden" name="employee_id" value="{{ employee.id }}"><button class="check {% if task.status=='완료' %}done{% endif %}">{% if task.status=='완료' %}✓{% else %}○{% endif %}</button></form>{% else %}{{ '✓' if task.status=='완료' else ('－' if task.status=='취소' else '○') }}{% endif %}</td>
+    <td><b>{{ task.title }}</b>{% if task.notes %}<small class="subtext">{{ task.notes }}</small>{% endif %}</td><td>{{ task.owner_department }}</td><td>{{ task.assigned_to or '-' }}</td><td>{{ task.due_date }}</td><td>{% if task.required %}<b>필수</b>{% else %}권장{% endif %}</td><td><span class="status {{ task.status }}">{{ task.status }}</span></td>
+    {% if permission.can_edit_employee %}<td><a class="text-link" href="/tasks/{{ task.id }}/edit">수정</a></td>{% endif %}
+  </tr>{% else %}<tr><td colspan="8" class="empty">생성된 온보딩 업무가 없습니다.</td></tr>{% endfor %}</tbody></table>
+</section>
+
+<section class="panel side-panel">
+  <h2>입사자 상태</h2><div class="summary-line"><span>현재 상태</span><b>{{ employee.status }}</b></div><div class="summary-line"><span>예외상태</span><b>{{ employee.exception_status or '정상 진행' }}</b></div>
+  {% if permission.can_edit_employee %}
+  <hr><h3>기본 인사정보 수정</h3>
+  <details><summary class="details-summary">성명·사번·소속부서·직위/직책·고용형태 수정</summary><form method="post" action="/employees/{{ employee.id }}/info" class="stack compact-form"><label>성명</label><input name="name" value="{{ employee.name }}" required><label>사번</label><input name="employee_no" value="{{ employee.employee_no or '' }}"><label>소속부서</label><input name="department" value="{{ employee.department }}" required><label>직위/직책</label><input name="job_title" value="{{ employee.job_title or '' }}"><label>고용형태</label><select name="employment_type"><option {% if employee.employment_type=='정규직' %}selected{% endif %}>정규직</option><option {% if employee.employment_type=='계약직' %}selected{% endif %}>계약직</option><option {% if employee.employment_type=='인턴' %}selected{% endif %}>인턴</option><option {% if employee.employment_type=='일용직' %}selected{% endif %}>일용직</option></select><label><input type="checkbox" name="reapply_template" value="1"> 변경된 조건에 맞는 템플릿 재선택 및 미완료 업무 반영</label><button class="btn">기본정보 저장</button></form></details>
+  <hr><h3>예외 처리</h3><form method="post" action="/employees/{{ employee.id }}/exception" class="stack"><select name="exception_status"><option value="">정상 진행</option><option {% if employee.exception_status=='장비 준비 지연' %}selected{% endif %}>장비 준비 지연</option><option {% if employee.exception_status=='서류 제출 지연' %}selected{% endif %}>서류 제출 지연</option><option {% if employee.exception_status=='교육 일정 변경' %}selected{% endif %}>교육 일정 변경</option></select><button class="btn full">예외상태 저장</button></form>
+  <hr><h3>입사일 변경</h3><form method="post" action="/employees/{{ employee.id }}/start-date" class="stack"><input type="date" name="new_start_date" value="{{ employee.start_date }}" required><label><input type="checkbox" name="shift_tasks" value="1" checked> 미완료 업무 완료기한도 같은 일수만큼 변경</label><button class="btn">입사일 변경</button></form>
+  <hr><h3>템플릿 최신화</h3><p>완료·취소된 업무는 보존하고, 현재 템플릿의 새 항목/담당자/기한을 미완료 업무에 반영합니다.</p><form method="post" action="/employees/{{ employee.id }}/sync-template" onsubmit="return confirm('현재 템플릿 내용을 미완료 업무에 반영하시겠습니까? 완료·취소 업무는 변경하지 않습니다.')"><button class="btn full">현재 템플릿 다시 반영</button></form>
+  {% if employee.status!='입사취소' %}<hr><form method="post" action="/employees/{{ employee.id }}/cancel" onsubmit="return confirm('입사 취소 처리하시겠습니까? 미완료 업무도 취소됩니다.')"><button class="btn danger-button full">입사 취소 처리</button></form>{% endif %}
+  {% endif %}
+</section>
+</div>
+
+<section class="panel mt">
+  <div class="panel-title"><div><h2>입사서류 제출·확인</h2><p>관리자가 등록한 근로계약·보안·개인정보 등 양식을 입사자별로 추적합니다.</p></div></div>
+  <table><thead><tr><th>서류명</th><th>구분</th><th>필수/권장</th><th>양식</th><th>제출상태</th><th>제출파일</th><th>제출/확인</th></tr></thead><tbody>
+  {% for d in employee_documents %}<tr><td><b>{{ d.name }}</b>{% if d.note %}<small class="subtext">확인 메모: {{ d.note }}</small>{% endif %}</td><td>{{ d.category }}</td><td>{{ '필수' if d.required else '권장' }}</td><td>{% if d.form_stored_name %}<a class="text-link" href="/documents/{{ d.document_form_id }}/download">양식 다운로드</a>{% else %}-{% endif %}</td><td><span class="status {{ d.status }}">{{ d.status }}</span></td><td>{% if d.stored_name %}<a class="text-link" href="/employee-documents/{{ d.id }}/download">{{ d.file_name }}</a>{% else %}-{% endif %}</td><td>
+    {% if current_role=='신입사원' or permission.can_edit_employee %}<form method="post" action="/employee-documents/{{ d.id }}/upload" enctype="multipart/form-data" class="mini-form"><input type="hidden" name="employee_id" value="{{ employee.id }}"><input type="file" name="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" required><button class="btn">{% if d.stored_name %}재제출{% else %}제출{% endif %}</button></form>{% endif %}
+    {% if permission.can_edit_employee %}<form method="post" action="/employee-documents/{{ d.id }}/review" class="mini-form review-form"><input type="hidden" name="employee_id" value="{{ employee.id }}"><select name="status"><option {% if d.status=='미제출' %}selected{% endif %}>미제출</option><option {% if d.status=='제출' %}selected{% endif %}>제출</option><option {% if d.status=='확인완료' %}selected{% endif %}>확인완료</option><option {% if d.status=='보완요청' %}selected{% endif %}>보완요청</option></select><input name="note" value="{{ d.note }}" placeholder="확인 메모"><button class="btn">확인 저장</button></form>{% endif %}
+  </td></tr>{% else %}<tr><td colspan="7" class="empty">활성화된 입사서류 양식이 없습니다. 관리자 설정의 문서·양식 관리에서 추가할 수 있습니다.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+
+{% if permission.can_edit_employee %}
+<section class="panel mt"><h2>개별 온보딩 업무 추가</h2><p>템플릿에 없는 예외 업무를 이 입사자에게만 추가합니다.</p><form method="post" action="/employees/{{ employee.id }}/tasks/new" class="task-add-grid"><input name="title" placeholder="업무명" required><input name="owner_department" placeholder="담당부서" required><input name="assigned_to" placeholder="담당자(비우면 자동배정)"><input type="date" name="due_date" required><label class="checkbox"><input type="checkbox" name="required" value="1" checked>필수</label><input name="notes" placeholder="메모(선택)"><button class="btn primary">개별 업무 추가</button></form></section>
+{% endif %}
+{% endblock %}

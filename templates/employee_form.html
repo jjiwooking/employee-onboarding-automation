@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><div><h1>{{ settings.feature_employee_add }}</h1><p>대한민국 기업에서 일반적으로 사용하는 인사정보 항목 기준입니다.</p></div></div>
+{% if error %}<div class="alert error">{{ error }}</div>{% endif %}
+<section class="panel narrow">
+<form method="post" class="form-grid">
+<label>성명 *</label><input name="name" required>
+<label>사번</label><input name="employee_no" placeholder="동일 사번 중복 등록 방지">
+<label>소속부서 *</label><input name="department" required placeholder="예: 경영지원팀">
+<label>직위/직책</label><input name="job_title" placeholder="예: 사원 / 팀원">
+<label>고용형태</label><select name="employment_type"><option>정규직</option><option>계약직</option><option>인턴</option><option>일용직</option></select>
+<label>입사일 *</label><input type="date" name="start_date" required>
+<div></div><div class="actions"><a class="btn" href="/employees">취소</a><button class="btn primary" type="submit">등록 및 온보딩 생성</button></div>
+</form>
+</section>
+{% endblock %}
