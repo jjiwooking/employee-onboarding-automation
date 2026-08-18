@@ -1,3 +1,6 @@
+https://github.com/jjiwooking/employee-onboarding-automation
+https://employee-app-automation-6myex6plqjwpjnz8jarjsp.streamlit.app
+
 신입사원 온보딩 자동화 프로그램
 
 Employee Onboarding Automation
